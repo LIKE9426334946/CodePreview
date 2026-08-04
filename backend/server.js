@@ -12,6 +12,10 @@ function createApp({ dataFile = DEFAULT_DATA_FILE, publicDir = DEFAULT_PUBLIC_DI
   app.disable('x-powered-by');
   app.set('trust proxy', 'loopback');
   app.use(express.json({ limit: '1mb' }));
+  app.use('/api', (_request, response, next) => {
+    response.set('Cache-Control', 'no-store');
+    next();
+  });
 
   app.get('/api/health', (_request, response) => {
     response.json({ status: 'ok', service: 'CodePreview' });
@@ -116,9 +120,25 @@ function createApp({ dataFile = DEFAULT_DATA_FILE, publicDir = DEFAULT_PUBLIC_DI
   });
 
   app.get('/admin', (_request, response) => {
+    response.set({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
+    });
     response.sendFile(path.join(publicDir, 'admin.html'));
   });
-  app.use(express.static(publicDir, { extensions: ['html'], maxAge: '1h' }));
+  app.use(express.static(publicDir, {
+    extensions: ['html'],
+    etag: true,
+    maxAge: 0,
+    setHeaders(response, filePath) {
+      if (/\.(?:html|js|css)$/.test(filePath)) {
+        response.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        response.setHeader('Pragma', 'no-cache');
+        response.setHeader('Expires', '0');
+      }
+    },
+  }));
 
   app.use('/api', (_request, response) => {
     response.status(404).json({ error: '接口不存在', code: 'NOT_FOUND' });

@@ -119,11 +119,25 @@ test('directory order and per-directory snippet order endpoints work', async (t)
 
 test('serves viewer and management pages without a mobile admin entry', async (t) => {
   const baseUrl = await testServer(t);
-  const viewer = await (await fetch(baseUrl)).text();
-  const admin = await (await fetch(`${baseUrl}/admin`)).text();
+  const viewerResponse = await fetch(baseUrl);
+  const adminResponse = await fetch(`${baseUrl}/admin`);
+  const viewer = await viewerResponse.text();
+  const admin = await adminResponse.text();
   assert.match(viewer, /CodePreview/);
   assert.doesNotMatch(viewer, /在电脑端管理/);
   assert.match(admin, /目录/);
   assert.match(admin, /代码管理/);
+  assert.match(admin, /admin\.js\?v=directory-cache-fix-1/);
+  assert.match(viewer, /viewer\.js\?v=directory-cache-fix-1/);
+  assert.match(adminResponse.headers.get('cache-control'), /no-store/);
 });
 
+test('prevents stale scripts and API data from being cached', async (t) => {
+  const baseUrl = await testServer(t);
+  const scriptResponse = await fetch(`${baseUrl}/admin.js?v=directory-cache-fix-1`);
+  const apiResponse = await fetch(`${baseUrl}/api/library`);
+  assert.equal(scriptResponse.status, 200);
+  assert.match(scriptResponse.headers.get('cache-control'), /no-cache/);
+  assert.match(scriptResponse.headers.get('cache-control'), /no-store/);
+  assert.equal(apiResponse.headers.get('cache-control'), 'no-store');
+});
