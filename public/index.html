@@ -40,7 +40,7 @@
             <div class="empty-code" id="empty-code">
               <span>&lt;/&gt;</span>
               <strong>还没有可显示的代码</strong>
-              <p>请在电脑端管理页面添加代码。</p>
+              <p>请先添加目录和代码。</p>
             </div>
           </div>
           <div class="progress-track" aria-hidden="true"><div id="progress-fill"></div></div>
@@ -65,15 +65,14 @@
     <div class="drawer-backdrop" id="drawer-backdrop"></div>
     <aside class="library-drawer" id="library-drawer" aria-hidden="true">
       <div class="drawer-header">
-        <div><span class="eyebrow">YOUR LIBRARY</span><h2>代码库</h2></div>
+        <button class="icon-button drawer-back is-hidden" id="directory-back-button" type="button" aria-label="返回目录">←</button>
+        <div class="drawer-heading"><span class="eyebrow" id="drawer-eyebrow">DIRECTORIES</span><h2 id="drawer-title">目录</h2></div>
         <button class="icon-button" id="close-library-button" type="button" aria-label="关闭代码库">×</button>
       </div>
       <div class="library-list" id="library-list"></div>
-      <a class="admin-entry" href="/admin">在电脑端管理 <span>↗</span></a>
     </aside>
 
     <div class="toast" id="toast" role="status"></div>
     <script src="/viewer.js" defer></script>
   </body>
 </html>
-

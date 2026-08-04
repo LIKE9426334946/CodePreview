@@ -17,6 +17,54 @@ function createApp({ dataFile = DEFAULT_DATA_FILE, publicDir = DEFAULT_PUBLIC_DI
     response.json({ status: 'ok', service: 'CodePreview' });
   });
 
+  app.get('/api/library', async (_request, response, next) => {
+    try {
+      response.json(await store.getLibrary());
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.get('/api/directories', async (_request, response, next) => {
+    try {
+      response.json({ directories: await store.getDirectories() });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.post('/api/directories', async (request, response, next) => {
+    try {
+      response.status(201).json({ directory: await store.createDirectory(request.body) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.put('/api/directories/order', async (request, response, next) => {
+    try {
+      response.json({ directories: await store.reorderDirectories(request.body.ids) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.put('/api/directories/:id', async (request, response, next) => {
+    try {
+      response.json({ directory: await store.updateDirectory(request.params.id, request.body) });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  app.delete('/api/directories/:id', async (request, response, next) => {
+    try {
+      response.json(await store.removeDirectory(request.params.id));
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.get('/api/snippets', async (_request, response, next) => {
     try {
       response.json({ snippets: await store.getAll() });
@@ -43,7 +91,9 @@ function createApp({ dataFile = DEFAULT_DATA_FILE, publicDir = DEFAULT_PUBLIC_DI
 
   app.put('/api/snippets/order', async (request, response, next) => {
     try {
-      response.json({ snippets: await store.reorder(request.body.ids) });
+      response.json({
+        snippets: await store.reorder(request.body.directoryId, request.body.ids),
+      });
     } catch (error) {
       next(error);
     }
@@ -102,4 +152,3 @@ function start() {
 if (require.main === module) start();
 
 module.exports = { createApp, start };
-

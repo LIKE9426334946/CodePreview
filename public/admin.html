@@ -19,19 +19,24 @@
     <main class="admin-layout">
       <aside class="admin-sidebar">
         <div class="sidebar-title">
-          <div><span class="eyebrow dark">CONTENT</span><h1>代码内容</h1></div>
-          <button class="add-button" id="add-button" type="button">＋ 新建</button>
+          <div><span class="eyebrow dark">DIRECTORIES</span><h1>目录</h1></div>
+          <button class="add-button" id="add-directory-button" type="button">＋ 新建</button>
         </div>
-        <p class="sidebar-hint">拖动暂未开放，可使用箭头调整手机端显示顺序。</p>
+        <p class="sidebar-hint">选择目录后管理其中的代码，可使用箭头调整显示顺序。</p>
+        <div class="directory-admin-list" id="directory-list"></div>
+        <div class="code-list-heading">
+          <div><span class="eyebrow dark">CODE LIBRARY</span><h2 id="code-list-title">代码库</h2></div>
+          <button class="add-code-button" id="add-button" type="button" disabled>＋ 代码</button>
+        </div>
         <div class="admin-list" id="admin-list"></div>
       </aside>
 
       <section class="editor-card">
         <div class="editor-empty" id="editor-empty">
           <span>&lt;/&gt;</span>
-          <h2>选择或新建一段代码</h2>
-          <p>你添加的每一行，都会在手机横屏页面中渐进显示。</p>
-          <button class="add-button large" id="empty-add-button" type="button">创建第一段代码</button>
+          <h2 id="empty-title">请先创建一个目录</h2>
+          <p id="empty-description">目录创建完成后，才能在目录下面添加代码。</p>
+          <button class="add-button large" id="empty-add-button" type="button">新建目录</button>
         </div>
 
         <form class="editor-form is-hidden" id="editor-form">
@@ -46,6 +51,9 @@
           <div class="form-grid">
             <label class="field field-wide">代码标题 <span>*</span>
               <input id="title-input" name="title" maxlength="100" required placeholder="例如：PyTorch 训练循环" />
+            </label>
+            <label class="field">所属目录 <span>*</span>
+              <select id="directory-input" name="directoryId" required></select>
             </label>
             <label class="field">语言标签
               <input id="language-input" name="language" maxlength="30" placeholder="例如：Python" />
@@ -67,4 +75,3 @@
     <script src="/admin.js" defer></script>
   </body>
 </html>
-

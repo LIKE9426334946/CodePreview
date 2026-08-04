@@ -19,6 +19,14 @@ async function testServer(t) {
   return `http://127.0.0.1:${port}`;
 }
 
+async function jsonRequest(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...options.headers },
+  });
+  return { response, data: await response.json() };
+}
+
 test('health endpoint reports the service status', async (t) => {
   const baseUrl = await testServer(t);
   const response = await fetch(`${baseUrl}/api/health`);
@@ -26,36 +34,96 @@ test('health endpoint reports the service status', async (t) => {
   assert.deepEqual(await response.json(), { status: 'ok', service: 'CodePreview' });
 });
 
-test('snippet API supports the full management flow', async (t) => {
+test('directory and snippet APIs support the full management flow', async (t) => {
   const baseUrl = await testServer(t);
-  const createResponse = await fetch(`${baseUrl}/api/snippets`, {
+  const createdDirectory = await jsonRequest(`${baseUrl}/api/directories`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title: 'Hello', language: 'JavaScript', code: 'const ok = true;' }),
+    body: JSON.stringify({ name: '练习' }),
   });
-  assert.equal(createResponse.status, 201);
-  const { snippet } = await createResponse.json();
+  assert.equal(createdDirectory.response.status, 201);
+  const { directory } = createdDirectory.data;
 
-  const listResponse = await fetch(`${baseUrl}/api/snippets`);
-  assert.equal((await listResponse.json()).snippets.length, 1);
+  const createdSnippet = await jsonRequest(`${baseUrl}/api/snippets`, {
+    method: 'POST',
+    body: JSON.stringify({
+      title: 'Hello',
+      directoryId: directory.id,
+      language: 'JavaScript',
+      code: 'const ok = true;',
+    }),
+  });
+  assert.equal(createdSnippet.response.status, 201);
+  const { snippet } = createdSnippet.data;
 
-  const updateResponse = await fetch(`${baseUrl}/api/snippets/${snippet.id}`, {
+  const library = await (await fetch(`${baseUrl}/api/library`)).json();
+  assert.equal(library.version, 2);
+  assert.equal(library.directories.length, 1);
+  assert.equal(library.snippets.length, 1);
+  assert.equal(library.snippets[0].directoryId, directory.id);
+
+  const updated = await jsonRequest(`${baseUrl}/api/snippets/${snippet.id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ...snippet, title: 'Updated' }),
   });
-  assert.equal((await updateResponse.json()).snippet.title, 'Updated');
+  assert.equal(updated.data.snippet.title, 'Updated');
 
-  const deleteResponse = await fetch(`${baseUrl}/api/snippets/${snippet.id}`, { method: 'DELETE' });
-  assert.equal(deleteResponse.status, 200);
-  assert.deepEqual((await (await fetch(`${baseUrl}/api/snippets`)).json()).snippets, []);
+  const deletedDirectory = await jsonRequest(`${baseUrl}/api/directories/${directory.id}`, {
+    method: 'DELETE',
+  });
+  assert.equal(deletedDirectory.data.deletedSnippetCount, 1);
+  const emptyLibrary = await (await fetch(`${baseUrl}/api/library`)).json();
+  assert.deepEqual(emptyLibrary.directories, []);
+  assert.deepEqual(emptyLibrary.snippets, []);
 });
 
-test('serves viewer and management pages', async (t) => {
+test('directory order and per-directory snippet order endpoints work', async (t) => {
+  const baseUrl = await testServer(t);
+  const firstDirectory = (await jsonRequest(`${baseUrl}/api/directories`, {
+    method: 'POST',
+    body: JSON.stringify({ name: 'A' }),
+  })).data.directory;
+  const secondDirectory = (await jsonRequest(`${baseUrl}/api/directories`, {
+    method: 'POST',
+    body: JSON.stringify({ name: 'B' }),
+  })).data.directory;
+  const firstSnippet = (await jsonRequest(`${baseUrl}/api/snippets`, {
+    method: 'POST',
+    body: JSON.stringify({ title: 'A1', directoryId: firstDirectory.id, code: '1' }),
+  })).data.snippet;
+  const secondSnippet = (await jsonRequest(`${baseUrl}/api/snippets`, {
+    method: 'POST',
+    body: JSON.stringify({ title: 'A2', directoryId: firstDirectory.id, code: '2' }),
+  })).data.snippet;
+
+  const directoryOrder = await jsonRequest(`${baseUrl}/api/directories/order`, {
+    method: 'PUT',
+    body: JSON.stringify({ ids: [secondDirectory.id, firstDirectory.id] }),
+  });
+  assert.deepEqual(
+    directoryOrder.data.directories.map((item) => item.id),
+    [secondDirectory.id, firstDirectory.id],
+  );
+
+  const snippetOrder = await jsonRequest(`${baseUrl}/api/snippets/order`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      directoryId: firstDirectory.id,
+      ids: [secondSnippet.id, firstSnippet.id],
+    }),
+  });
+  assert.deepEqual(
+    snippetOrder.data.snippets.map((item) => item.id),
+    [secondSnippet.id, firstSnippet.id],
+  );
+});
+
+test('serves viewer and management pages without a mobile admin entry', async (t) => {
   const baseUrl = await testServer(t);
   const viewer = await (await fetch(baseUrl)).text();
   const admin = await (await fetch(`${baseUrl}/admin`)).text();
   assert.match(viewer, /CodePreview/);
+  assert.doesNotMatch(viewer, /在电脑端管理/);
+  assert.match(admin, /目录/);
   assert.match(admin, /代码管理/);
 });
 

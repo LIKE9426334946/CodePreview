@@ -17,6 +17,9 @@ const elements = {
   speed: document.querySelector('#speed-select'),
   libraryButton: document.querySelector('#library-button'),
   closeLibraryButton: document.querySelector('#close-library-button'),
+  directoryBackButton: document.querySelector('#directory-back-button'),
+  drawerEyebrow: document.querySelector('#drawer-eyebrow'),
+  drawerTitle: document.querySelector('#drawer-title'),
   drawer: document.querySelector('#library-drawer'),
   backdrop: document.querySelector('#drawer-backdrop'),
   list: document.querySelector('#library-list'),
@@ -25,8 +28,11 @@ const elements = {
 };
 
 const state = {
+  directories: [],
   snippets: [],
   current: null,
+  currentDirectoryId: null,
+  drawerView: 'directories',
   visibleLines: 0,
   timer: null,
   toastTimer: null,
@@ -35,6 +41,10 @@ const state = {
 function codeLines() {
   if (!state.current || !state.current.code) return [];
   return state.current.code.split('\n');
+}
+
+function snippetsInDirectory(directoryId) {
+  return state.snippets.filter((snippet) => snippet.directoryId === directoryId);
 }
 
 function progressKey(id) {
@@ -72,17 +82,68 @@ function setDrawer(open) {
   elements.drawer.setAttribute('aria-hidden', String(!open));
 }
 
-function renderLibrary() {
-  elements.list.replaceChildren();
-  if (!state.snippets.length) {
-    const empty = document.createElement('div');
-    empty.className = 'library-empty';
-    empty.innerHTML = '<strong>代码库还是空的</strong><span>请前往电脑端管理页面添加内容。</span>';
-    elements.list.append(empty);
+function createEmptyState(title, description) {
+  const empty = document.createElement('div');
+  empty.className = 'library-empty';
+  const heading = document.createElement('strong');
+  heading.textContent = title;
+  const copy = document.createElement('span');
+  copy.textContent = description;
+  empty.append(heading, copy);
+  return empty;
+}
+
+function renderDirectories() {
+  elements.drawerEyebrow.textContent = 'DIRECTORIES';
+  elements.drawerTitle.textContent = '目录';
+  elements.directoryBackButton.classList.add('is-hidden');
+  if (!state.directories.length) {
+    elements.list.append(createEmptyState('还没有目录', '目前还没有可学习的内容。'));
     return;
   }
 
-  state.snippets.forEach((snippet, index) => {
+  state.directories.forEach((directory, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'library-item directory-item';
+    if (directory.id === state.currentDirectoryId) button.classList.add('active');
+
+    const number = document.createElement('span');
+    number.className = 'library-number';
+    number.textContent = String(index + 1).padStart(2, '0');
+    const copy = document.createElement('span');
+    copy.className = 'library-copy';
+    const title = document.createElement('strong');
+    title.textContent = directory.name;
+    const meta = document.createElement('small');
+    meta.textContent = `${snippetsInDirectory(directory.id).length} 段代码`;
+    const arrow = document.createElement('span');
+    arrow.className = 'directory-arrow';
+    arrow.textContent = '›';
+    copy.append(title, meta);
+    button.append(number, copy, arrow);
+    button.addEventListener('click', () => selectDirectory(directory.id));
+    elements.list.append(button);
+  });
+}
+
+function renderSnippets() {
+  const directory = state.directories.find((item) => item.id === state.currentDirectoryId);
+  if (!directory) {
+    state.drawerView = 'directories';
+    renderDirectories();
+    return;
+  }
+  elements.drawerEyebrow.textContent = 'CODE LIBRARY';
+  elements.drawerTitle.textContent = directory.name;
+  elements.directoryBackButton.classList.remove('is-hidden');
+  const snippets = snippetsInDirectory(directory.id);
+  if (!snippets.length) {
+    elements.list.append(createEmptyState('目录中还没有代码', '这个目录目前还是空的。'));
+    return;
+  }
+
+  snippets.forEach((snippet, index) => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'library-item';
@@ -103,6 +164,19 @@ function renderLibrary() {
     button.addEventListener('click', () => selectSnippet(snippet.id));
     elements.list.append(button);
   });
+}
+
+function renderLibrary() {
+  elements.list.replaceChildren();
+  if (state.drawerView === 'snippets') renderSnippets();
+  else renderDirectories();
+}
+
+function selectDirectory(id) {
+  if (!state.directories.some((directory) => directory.id === id)) return;
+  state.currentDirectoryId = id;
+  state.drawerView = 'snippets';
+  renderLibrary();
 }
 
 function renderCode({ scroll = true } = {}) {
@@ -189,6 +263,8 @@ function selectSnippet(id, { closeDrawer = true } = {}) {
   if (!snippet) return;
   stopPlayback();
   state.current = snippet;
+  state.currentDirectoryId = snippet.directoryId;
+  state.drawerView = 'snippets';
   const total = codeLines().length;
   state.visibleLines = total ? loadProgress(id, total) : 0;
   elements.title.textContent = snippet.title;
@@ -205,24 +281,37 @@ function selectSnippet(id, { closeDrawer = true } = {}) {
   if (closeDrawer) setDrawer(false);
 }
 
-async function loadSnippets() {
+async function loadLibrary() {
   try {
-    const response = await fetch('/api/snippets');
+    const response = await fetch('/api/library');
     if (!response.ok) throw new Error('无法读取代码库');
     const data = await response.json();
+    state.directories = data.directories;
     state.snippets = data.snippets;
-    renderLibrary();
     const requestedId = new URLSearchParams(window.location.search).get('id');
-    const initial = state.snippets.find((item) => item.id === requestedId) || state.snippets[0];
-    if (initial) selectSnippet(initial.id, { closeDrawer: false });
-    else setDrawer(true);
+    const requested = state.snippets.find((item) => item.id === requestedId);
+    if (requested) selectSnippet(requested.id);
+    else {
+      state.drawerView = 'directories';
+      renderLibrary();
+      setDrawer(true);
+    }
   } catch (error) {
     showToast(error.message);
+    renderLibrary();
     setDrawer(true);
   }
 }
 
-elements.libraryButton.addEventListener('click', () => setDrawer(true));
+elements.libraryButton.addEventListener('click', () => {
+  state.drawerView = state.currentDirectoryId ? 'snippets' : 'directories';
+  renderLibrary();
+  setDrawer(true);
+});
+elements.directoryBackButton.addEventListener('click', () => {
+  state.drawerView = 'directories';
+  renderLibrary();
+});
 elements.closeLibraryButton.addEventListener('click', () => setDrawer(false));
 elements.backdrop.addEventListener('click', () => setDrawer(false));
 elements.previous.addEventListener('click', previousLine);
@@ -276,4 +365,4 @@ elements.panel.addEventListener('touchend', (event) => {
 }, { passive: true });
 
 window.addEventListener('beforeunload', stopPlayback);
-loadSnippets();
+loadLibrary();
