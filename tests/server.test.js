@@ -128,7 +128,15 @@ test('serves viewer and management pages without a mobile admin entry', async (t
   assert.match(admin, /目录/);
   assert.match(admin, /代码管理/);
   assert.match(admin, /admin\.js\?v=directory-cache-fix-1/);
-  assert.match(viewer, /viewer\.js\?v=directory-cache-fix-1/);
+  assert.match(viewer, /viewer\.js\?v=viewer-controls-top-1/);
+  assert.doesNotMatch(viewer, /id="fullscreen-button"/);
+  assert.doesNotMatch(viewer, /id="play-label"/);
+  assert.ok(
+    viewer.indexOf('class="viewer-controls"') < viewer.indexOf('class="code-workspace"'),
+    '播放控制栏应位于代码区域上方',
+  );
+  assert.match(viewer, /id="play-button"[^>]*aria-label="自动播放"[^>]*>/);
+  assert.match(viewer, /<option value="1800" selected>1×<\/option>/);
   assert.match(adminResponse.headers.get('cache-control'), /no-store/);
 });
 

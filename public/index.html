@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0b1020" />
     <title>CodePreview</title>
-    <link rel="stylesheet" href="/styles.css?v=directory-cache-fix-1" />
+    <link rel="stylesheet" href="/styles.css?v=viewer-controls-top-1" />
   </head>
   <body class="viewer-page">
     <div class="ambient ambient-one"></div>
@@ -25,7 +25,20 @@
           <h1 id="viewer-title">选择一段代码</h1>
         </div>
         <span class="language-badge is-hidden" id="viewer-language"></span>
-        <button class="icon-button" id="fullscreen-button" type="button" aria-label="进入全屏">⛶</button>
+        <nav class="viewer-controls" aria-label="代码播放控制">
+          <button class="control icon-control secondary" id="reset-button" type="button" aria-label="重置" title="重置">↻</button>
+          <button class="control icon-control" id="previous-button" type="button" aria-label="上一行" title="上一行">←</button>
+          <button class="control icon-control primary" id="play-button" type="button" aria-label="自动播放" title="播放或暂停"><span id="play-icon">▶</span></button>
+          <button class="control icon-control" id="next-button" type="button" aria-label="下一行" title="下一行">→</button>
+          <label class="speed-control" aria-label="播放速度" title="播放速度">
+            <span class="speed-icon" aria-hidden="true">◷</span>
+            <select id="speed-select" aria-label="播放速度">
+              <option value="3000">0.6×</option>
+              <option value="1800" selected>1×</option>
+              <option value="900">2×</option>
+            </select>
+          </label>
+        </nav>
       </header>
 
       <main class="code-workspace">
@@ -46,19 +59,6 @@
           <div class="progress-track" aria-hidden="true"><div id="progress-fill"></div></div>
         </section>
 
-        <footer class="viewer-controls">
-          <button class="control secondary" id="reset-button" type="button">重置</button>
-          <button class="control step" id="previous-button" type="button"><span>←</span> 上一行</button>
-          <button class="control primary" id="play-button" type="button"><span id="play-icon">▶</span><span id="play-label">自动播放</span></button>
-          <button class="control step" id="next-button" type="button">下一行 <span>→</span></button>
-          <label class="speed-control">速度
-            <select id="speed-select">
-              <option value="3000">慢</option>
-              <option value="1800" selected>正常</option>
-              <option value="900">快</option>
-            </select>
-          </label>
-        </footer>
       </main>
     </div>
 
@@ -73,6 +73,6 @@
     </aside>
 
     <div class="toast" id="toast" role="status"></div>
-    <script src="/viewer.js?v=directory-cache-fix-1" defer></script>
+    <script src="/viewer.js?v=viewer-controls-top-1" defer></script>
   </body>
 </html>

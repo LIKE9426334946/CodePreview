@@ -12,7 +12,6 @@ const elements = {
   next: document.querySelector('#next-button'),
   play: document.querySelector('#play-button'),
   playIcon: document.querySelector('#play-icon'),
-  playLabel: document.querySelector('#play-label'),
   reset: document.querySelector('#reset-button'),
   speed: document.querySelector('#speed-select'),
   libraryButton: document.querySelector('#library-button'),
@@ -23,7 +22,6 @@ const elements = {
   drawer: document.querySelector('#library-drawer'),
   backdrop: document.querySelector('#drawer-backdrop'),
   list: document.querySelector('#library-list'),
-  fullscreen: document.querySelector('#fullscreen-button'),
   toast: document.querySelector('#toast'),
 };
 
@@ -218,7 +216,7 @@ function stopPlayback() {
   state.timer = null;
   elements.play.classList.remove('playing');
   elements.playIcon.textContent = '▶';
-  elements.playLabel.textContent = '自动播放';
+  elements.play.setAttribute('aria-label', '自动播放');
 }
 
 function setVisibleLines(value, options) {
@@ -254,7 +252,7 @@ function togglePlayback() {
   if (state.visibleLines >= total) setVisibleLines(1, { scroll: false });
   elements.play.classList.add('playing');
   elements.playIcon.textContent = 'Ⅱ';
-  elements.playLabel.textContent = '暂停';
+  elements.play.setAttribute('aria-label', '暂停');
   state.timer = window.setInterval(nextLine, Number(elements.speed.value));
 }
 
@@ -327,18 +325,6 @@ elements.speed.addEventListener('change', () => {
     stopPlayback();
     togglePlayback();
   }
-});
-elements.fullscreen.addEventListener('click', async () => {
-  try {
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else await document.documentElement.requestFullscreen();
-  } catch {
-    showToast('当前浏览器不支持全屏模式');
-  }
-});
-document.addEventListener('fullscreenchange', () => {
-  elements.fullscreen.textContent = document.fullscreenElement ? '↙' : '⛶';
-  elements.fullscreen.setAttribute('aria-label', document.fullscreenElement ? '退出全屏' : '进入全屏');
 });
 document.addEventListener('keydown', (event) => {
   if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextLine();
