@@ -1,0 +1,21 @@
+[Unit]
+Description=CodePreview Node.js Service
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/CodePreview
+ExecStart=/usr/bin/node /opt/CodePreview/backend/server.js
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=3022
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+

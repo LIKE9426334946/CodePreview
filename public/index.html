@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1020" />
+    <title>CodePreview</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="viewer-page">
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <div class="rotate-notice" role="status">
+      <div class="phone-rotate" aria-hidden="true"></div>
+      <strong>请将手机横屏</strong>
+      <span>横屏后可以获得更宽阔的代码阅读空间</span>
+    </div>
+
+    <div class="viewer-shell">
+      <header class="viewer-header">
+        <button class="icon-button" id="library-button" type="button" aria-label="打开代码库">☰</button>
+        <div class="viewer-heading">
+          <div class="eyebrow">CODE PREVIEW</div>
+          <h1 id="viewer-title">选择一段代码</h1>
+        </div>
+        <span class="language-badge is-hidden" id="viewer-language"></span>
+        <button class="icon-button" id="fullscreen-button" type="button" aria-label="进入全屏">⛶</button>
+      </header>
+
+      <main class="code-workspace">
+        <section class="code-panel" id="code-panel" aria-live="polite">
+          <div class="code-panel-topline">
+            <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+            <p id="viewer-description">从代码库中选择内容后，就可以逐行开始复习。</p>
+            <span id="line-counter">0 / 0</span>
+          </div>
+          <div class="code-scroll" id="code-scroll">
+            <ol class="code-lines" id="code-lines"></ol>
+            <div class="empty-code" id="empty-code">
+              <span>&lt;/&gt;</span>
+              <strong>还没有可显示的代码</strong>
+              <p>请在电脑端管理页面添加代码。</p>
+            </div>
+          </div>
+          <div class="progress-track" aria-hidden="true"><div id="progress-fill"></div></div>
+        </section>
+
+        <footer class="viewer-controls">
+          <button class="control secondary" id="reset-button" type="button">重置</button>
+          <button class="control step" id="previous-button" type="button"><span>←</span> 上一行</button>
+          <button class="control primary" id="play-button" type="button"><span id="play-icon">▶</span><span id="play-label">自动播放</span></button>
+          <button class="control step" id="next-button" type="button">下一行 <span>→</span></button>
+          <label class="speed-control">速度
+            <select id="speed-select">
+              <option value="3000">慢</option>
+              <option value="1800" selected>正常</option>
+              <option value="900">快</option>
+            </select>
+          </label>
+        </footer>
+      </main>
+    </div>
+
+    <div class="drawer-backdrop" id="drawer-backdrop"></div>
+    <aside class="library-drawer" id="library-drawer" aria-hidden="true">
+      <div class="drawer-header">
+        <div><span class="eyebrow">YOUR LIBRARY</span><h2>代码库</h2></div>
+        <button class="icon-button" id="close-library-button" type="button" aria-label="关闭代码库">×</button>
+      </div>
+      <div class="library-list" id="library-list"></div>
+      <a class="admin-entry" href="/admin">在电脑端管理 <span>↗</span></a>
+    </aside>
+
+    <div class="toast" id="toast" role="status"></div>
+    <script src="/viewer.js" defer></script>
+  </body>
+</html>
+

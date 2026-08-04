@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f5f1e8" />
+    <title>CodePreview 管理</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="admin-page">
+    <header class="admin-topbar">
+      <a class="brand" href="/"><span class="brand-mark">C</span><span><strong>CodePreview</strong><small>代码管理</small></span></a>
+      <div class="admin-topbar-actions">
+        <span class="save-state" id="save-state">数据保存在 JSON 文件中</span>
+        <a class="preview-link" id="preview-link" href="/" target="_blank" rel="noreferrer">打开手机预览 ↗</a>
+      </div>
+    </header>
+
+    <main class="admin-layout">
+      <aside class="admin-sidebar">
+        <div class="sidebar-title">
+          <div><span class="eyebrow dark">CONTENT</span><h1>代码内容</h1></div>
+          <button class="add-button" id="add-button" type="button">＋ 新建</button>
+        </div>
+        <p class="sidebar-hint">拖动暂未开放，可使用箭头调整手机端显示顺序。</p>
+        <div class="admin-list" id="admin-list"></div>
+      </aside>
+
+      <section class="editor-card">
+        <div class="editor-empty" id="editor-empty">
+          <span>&lt;/&gt;</span>
+          <h2>选择或新建一段代码</h2>
+          <p>你添加的每一行，都会在手机横屏页面中渐进显示。</p>
+          <button class="add-button large" id="empty-add-button" type="button">创建第一段代码</button>
+        </div>
+
+        <form class="editor-form is-hidden" id="editor-form">
+          <div class="editor-title-row">
+            <div><span class="eyebrow dark">EDITOR</span><h2 id="editor-heading">编辑代码</h2></div>
+            <div class="editor-actions">
+              <button class="danger-button" id="delete-button" type="button">删除</button>
+              <button class="save-button" type="submit">保存更改</button>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <label class="field field-wide">代码标题 <span>*</span>
+              <input id="title-input" name="title" maxlength="100" required placeholder="例如：PyTorch 训练循环" />
+            </label>
+            <label class="field">语言标签
+              <input id="language-input" name="language" maxlength="30" placeholder="例如：Python" />
+            </label>
+            <label class="field field-wide">简短说明
+              <input id="description-input" name="description" maxlength="500" placeholder="这段代码用于……" />
+            </label>
+          </div>
+
+          <label class="field code-field">代码内容
+            <div class="textarea-toolbar"><span>每个换行对应手机端的一步</span><span id="line-count">0 行</span></div>
+            <textarea id="code-input" name="code" maxlength="200000" spellcheck="false" placeholder="在这里粘贴代码……"></textarea>
+          </label>
+        </form>
+      </section>
+    </main>
+
+    <div class="toast light" id="toast" role="status"></div>
+    <script src="/admin.js" defer></script>
+  </body>
+</html>
+

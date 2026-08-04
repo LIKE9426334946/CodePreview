@@ -1,0 +1,19 @@
+{
+  "name": "code-preview",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A mobile landscape, line-by-line code reading tool with desktop management.",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "NODE_ENV=development node --watch backend/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}
+

@@ -1,0 +1,6 @@
+node_modules/
+npm-debug.log*
+backend/data/snippets.json
+backend/data/*.tmp
+.DS_Store
+
