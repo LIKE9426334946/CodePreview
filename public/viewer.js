@@ -142,10 +142,13 @@ function renderSnippets() {
   }
 
   snippets.forEach((snippet, index) => {
+    const row = document.createElement('div');
+    row.className = 'library-item-row';
+    if (snippet.id === state.current?.id) row.classList.add('active');
+
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'library-item';
-    if (snippet.id === state.current?.id) button.classList.add('active');
 
     const number = document.createElement('span');
     number.className = 'library-number';
@@ -160,7 +163,19 @@ function renderSnippets() {
     copy.append(title, meta);
     button.append(number, copy);
     button.addEventListener('click', () => selectSnippet(snippet.id));
-    elements.list.append(button);
+
+    const reviewButton = document.createElement('button');
+    reviewButton.type = 'button';
+    reviewButton.className = 'review-toggle';
+    reviewButton.textContent = '✓';
+    reviewButton.classList.toggle('reviewed', snippet.reviewed === true);
+    reviewButton.setAttribute('aria-pressed', String(snippet.reviewed === true));
+    reviewButton.setAttribute('aria-label', snippet.reviewed ? '取消复习标记' : '标记为已复习');
+    reviewButton.title = snippet.reviewed ? '取消复习标记' : '标记为已复习';
+    reviewButton.addEventListener('click', () => toggleSnippetReviewed(snippet.id, reviewButton));
+
+    row.append(button, reviewButton);
+    elements.list.append(row);
   });
 }
 
@@ -175,6 +190,30 @@ function selectDirectory(id) {
   state.currentDirectoryId = id;
   state.drawerView = 'snippets';
   renderLibrary();
+}
+
+async function toggleSnippetReviewed(id, button) {
+  const snippet = state.snippets.find((item) => item.id === id);
+  if (!snippet || button.disabled) return;
+  const reviewed = snippet.reviewed !== true;
+  button.disabled = true;
+  button.classList.add('saving');
+  try {
+    const response = await fetch(`/api/snippets/${encodeURIComponent(id)}/reviewed`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reviewed }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || '无法保存复习状态');
+    snippet.reviewed = data.snippet.reviewed === true;
+    renderLibrary();
+    showToast(snippet.reviewed ? '已标记为复习' : '已取消复习标记');
+  } catch (error) {
+    button.disabled = false;
+    button.classList.remove('saving');
+    showToast(error.message);
+  }
 }
 
 function renderCode({ scroll = true } = {}) {

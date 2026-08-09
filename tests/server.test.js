@@ -56,10 +56,26 @@ test('directory and snippet APIs support the full management flow', async (t) =>
   const { snippet } = createdSnippet.data;
 
   const library = await (await fetch(`${baseUrl}/api/library`)).json();
-  assert.equal(library.version, 2);
+  assert.equal(library.version, 3);
   assert.equal(library.directories.length, 1);
   assert.equal(library.snippets.length, 1);
   assert.equal(library.snippets[0].directoryId, directory.id);
+  assert.equal(library.snippets[0].reviewed, false);
+
+  const reviewed = await jsonRequest(`${baseUrl}/api/snippets/${snippet.id}/reviewed`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reviewed: true }),
+  });
+  assert.equal(reviewed.response.status, 200);
+  assert.equal(reviewed.data.snippet.reviewed, true);
+  const persistedLibrary = await (await fetch(`${baseUrl}/api/library`)).json();
+  assert.equal(persistedLibrary.snippets[0].reviewed, true);
+
+  const unreviewed = await jsonRequest(`${baseUrl}/api/snippets/${snippet.id}/reviewed`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reviewed: false }),
+  });
+  assert.equal(unreviewed.data.snippet.reviewed, false);
 
   const updated = await jsonRequest(`${baseUrl}/api/snippets/${snippet.id}`, {
     method: 'PUT',
@@ -121,14 +137,18 @@ test('serves viewer and management pages without a mobile admin entry', async (t
   const baseUrl = await testServer(t);
   const viewerResponse = await fetch(baseUrl);
   const adminResponse = await fetch(`${baseUrl}/admin`);
+  const viewerScriptResponse = await fetch(`${baseUrl}/viewer.js?v=server-reviewed-state-1`);
+  const viewerStylesResponse = await fetch(`${baseUrl}/styles.css?v=server-reviewed-state-1`);
   const viewer = await viewerResponse.text();
   const admin = await adminResponse.text();
+  const viewerScript = await viewerScriptResponse.text();
+  const viewerStyles = await viewerStylesResponse.text();
   assert.match(viewer, /CodePreview/);
   assert.doesNotMatch(viewer, /在电脑端管理/);
   assert.match(admin, /目录/);
   assert.match(admin, /代码管理/);
   assert.match(admin, /admin\.js\?v=directory-cache-fix-1/);
-  assert.match(viewer, /viewer\.js\?v=viewer-controls-top-1/);
+  assert.match(viewer, /viewer\.js\?v=server-reviewed-state-1/);
   assert.doesNotMatch(viewer, /id="fullscreen-button"/);
   assert.doesNotMatch(viewer, /id="play-label"/);
   assert.ok(
@@ -137,7 +157,43 @@ test('serves viewer and management pages without a mobile admin entry', async (t
   );
   assert.match(viewer, /id="play-button"[^>]*aria-label="自动播放"[^>]*>/);
   assert.match(viewer, /<option value="1800" selected>1×<\/option>/);
+  assert.match(viewerScript, /className = 'review-toggle'/);
+  assert.match(viewerScript, /method: 'PATCH'/);
+  assert.match(viewerScript, /aria-pressed/);
+  assert.match(viewerStyles, /\.review-toggle\.reviewed/);
+  assert.match(viewerStyles, /width: 28px/);
   assert.match(adminResponse.headers.get('cache-control'), /no-store/);
+});
+
+test('rejects an invalid reviewed value and migrates old snippets to unreviewed', async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'codepreview-migration-'));
+  const dataFile = path.join(directory, 'snippets.json');
+  await fs.writeFile(dataFile, JSON.stringify({
+    version: 2,
+    directories: [{ id: 'd1', name: '旧目录' }],
+    snippets: [{ id: 's1', title: '旧代码', directoryId: 'd1', code: '1' }],
+  }), 'utf8');
+  const app = createApp({ dataFile });
+  const server = await new Promise((resolve) => {
+    const running = app.listen(0, '127.0.0.1', () => resolve(running));
+  });
+  t.after(async () => {
+    await new Promise((resolve) => server.close(resolve));
+    await fs.rm(directory, { recursive: true, force: true });
+  });
+  const { port } = server.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  const migrated = await (await fetch(`${baseUrl}/api/library`)).json();
+  assert.equal(migrated.version, 3);
+  assert.equal(migrated.snippets[0].reviewed, false);
+
+  const invalid = await jsonRequest(`${baseUrl}/api/snippets/s1/reviewed`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reviewed: 'yes' }),
+  });
+  assert.equal(invalid.response.status, 400);
+  assert.match(invalid.data.error, /布尔值/);
 });
 
 test('prevents stale scripts and API data from being cached', async (t) => {

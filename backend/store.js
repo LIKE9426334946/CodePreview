@@ -2,7 +2,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 
-const DATA_VERSION = 2;
+const DATA_VERSION = 3;
 const LEGACY_DIRECTORY_ID = 'legacy-default';
 const EMPTY_STORE = Object.freeze({ version: DATA_VERSION, directories: [], snippets: [] });
 
@@ -56,7 +56,10 @@ function migrateStore(value) {
     throw new StoreError('JSON 数据文件格式不正确', 500, 'INVALID_DATA_FILE');
   }
 
-  const snippets = value.snippets.map((snippet) => ({ ...snippet }));
+  const snippets = value.snippets.map((snippet) => ({
+    ...snippet,
+    reviewed: snippet.reviewed === true,
+  }));
   const directories = Array.isArray(value.directories)
     ? value.directories.map((directory) => ({ ...directory }))
     : [];
@@ -232,6 +235,7 @@ function createJsonStore(dataFile) {
         id: crypto.randomUUID(),
         ...normalized,
         directoryId,
+        reviewed: false,
         createdAt: now,
         updatedAt: now,
       };
@@ -263,6 +267,18 @@ function createJsonStore(dataFile) {
       if (index === -1) throw new StoreError('没有找到这段代码', 404, 'NOT_FOUND');
       const [removed] = data.snippets.splice(index, 1);
       return removed;
+    });
+  }
+
+  async function setReviewed(id, reviewed) {
+    if (typeof reviewed !== 'boolean') {
+      throw new StoreError('复习状态必须是布尔值');
+    }
+    return mutate((data) => {
+      const snippet = data.snippets.find((item) => item.id === id);
+      if (!snippet) throw new StoreError('没有找到这段代码', 404, 'NOT_FOUND');
+      snippet.reviewed = reviewed;
+      return snippet;
     });
   }
 
@@ -298,6 +314,7 @@ function createJsonStore(dataFile) {
     create,
     update,
     remove,
+    setReviewed,
     reorder,
   };
 }
