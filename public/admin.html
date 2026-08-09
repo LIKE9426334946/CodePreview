@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#f5f1e8" />
     <title>CodePreview 管理</title>
-    <link rel="stylesheet" href="/styles.css?v=directory-cache-fix-1" />
+    <link rel="stylesheet" href="/styles.css?v=admin-drag-sort-1" />
   </head>
   <body class="admin-page">
     <header class="admin-topbar">
@@ -20,13 +20,19 @@
       <aside class="admin-sidebar">
         <div class="sidebar-title">
           <div><span class="eyebrow dark">DIRECTORIES</span><h1>目录</h1></div>
-          <button class="add-button" id="add-directory-button" type="button">＋ 新建</button>
+          <div class="sidebar-title-actions">
+            <button class="sort-mode-button" id="directory-sort-button" type="button">⇅ 排序</button>
+            <button class="add-button" id="add-directory-button" type="button">＋ 新建</button>
+          </div>
         </div>
-        <p class="sidebar-hint">选择目录后管理其中的代码，可使用箭头调整显示顺序。</p>
+        <p class="sidebar-hint">选择目录后管理其中的代码，点击排序后可直接拖动调整顺序。</p>
         <div class="directory-admin-list" id="directory-list"></div>
         <div class="code-list-heading">
           <div><span class="eyebrow dark">CODE LIBRARY</span><h2 id="code-list-title">代码库</h2></div>
-          <button class="add-code-button" id="add-button" type="button" disabled>＋ 代码</button>
+          <div class="code-list-actions">
+            <button class="sort-mode-button" id="snippet-sort-button" type="button" disabled>⇅ 排序</button>
+            <button class="add-code-button" id="add-button" type="button" disabled>＋ 代码</button>
+          </div>
         </div>
         <div class="admin-list" id="admin-list"></div>
       </aside>
@@ -71,7 +77,21 @@
       </section>
     </main>
 
+    <dialog class="move-dialog" id="move-dialog">
+      <form class="move-dialog-form" id="move-form">
+        <div><span class="eyebrow dark">MOVE CODE</span><h2>移动代码库</h2></div>
+        <p id="move-description">选择要移动到的目标目录。</p>
+        <label class="field">目标目录 <span>*</span>
+          <select id="move-directory-select" required></select>
+        </label>
+        <div class="move-dialog-actions">
+          <button class="dialog-cancel-button" id="cancel-move-button" type="button">取消</button>
+          <button class="save-button" id="confirm-move-button" type="submit">确认移动</button>
+        </div>
+      </form>
+    </dialog>
+
     <div class="toast light" id="toast" role="status"></div>
-    <script src="/admin.js?v=directory-cache-fix-1" defer></script>
+    <script src="/admin.js?v=admin-drag-sort-1" defer></script>
   </body>
 </html>

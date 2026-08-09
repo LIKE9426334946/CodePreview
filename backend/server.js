@@ -121,6 +121,14 @@ function createApp({ dataFile = DEFAULT_DATA_FILE, publicDir = DEFAULT_PUBLIC_DI
     }
   });
 
+  app.patch('/api/snippets/:id/move', async (request, response, next) => {
+    try {
+      response.json(await store.move(request.params.id, request.body.directoryId));
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.delete('/api/snippets/:id', async (request, response, next) => {
     try {
       response.json({ snippet: await store.remove(request.params.id) });

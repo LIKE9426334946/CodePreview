@@ -249,15 +249,22 @@ function createJsonStore(dataFile) {
     return mutate((data) => {
       const index = data.snippets.findIndex((item) => item.id === id);
       if (index === -1) throw new StoreError('没有找到这段代码', 404, 'NOT_FOUND');
-      const directoryId = normalized.directoryId || data.snippets[index].directoryId;
+      const previousDirectoryId = data.snippets[index].directoryId;
+      const directoryId = normalized.directoryId || previousDirectoryId;
       findDirectory(data, directoryId);
-      data.snippets[index] = {
+      const snippet = {
         ...data.snippets[index],
         ...normalized,
         directoryId,
         updatedAt: new Date().toISOString(),
       };
-      return data.snippets[index];
+      if (directoryId !== previousDirectoryId) {
+        data.snippets.splice(index, 1);
+        data.snippets.push(snippet);
+      } else {
+        data.snippets[index] = snippet;
+      }
+      return snippet;
     });
   }
 
@@ -279,6 +286,20 @@ function createJsonStore(dataFile) {
       if (!snippet) throw new StoreError('没有找到这段代码', 404, 'NOT_FOUND');
       snippet.reviewed = reviewed;
       return snippet;
+    });
+  }
+
+  async function move(id, directoryId) {
+    const normalizedDirectoryId = cleanText(directoryId, 100, '目录', true);
+    return mutate((data) => {
+      findDirectory(data, normalizedDirectoryId);
+      const index = data.snippets.findIndex((item) => item.id === id);
+      if (index === -1) throw new StoreError('没有找到这段代码', 404, 'NOT_FOUND');
+      const [snippet] = data.snippets.splice(index, 1);
+      snippet.directoryId = normalizedDirectoryId;
+      snippet.updatedAt = new Date().toISOString();
+      data.snippets.push(snippet);
+      return { snippet, snippets: data.snippets };
     });
   }
 
@@ -315,6 +336,7 @@ function createJsonStore(dataFile) {
     update,
     remove,
     setReviewed,
+    move,
     reorder,
   };
 }

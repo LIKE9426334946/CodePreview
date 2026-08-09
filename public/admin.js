@@ -1,8 +1,10 @@
 const elements = {
   directoryList: document.querySelector('#directory-list'),
   addDirectoryButton: document.querySelector('#add-directory-button'),
+  directorySortButton: document.querySelector('#directory-sort-button'),
   codeListTitle: document.querySelector('#code-list-title'),
   list: document.querySelector('#admin-list'),
+  snippetSortButton: document.querySelector('#snippet-sort-button'),
   form: document.querySelector('#editor-form'),
   empty: document.querySelector('#editor-empty'),
   emptyTitle: document.querySelector('#empty-title'),
@@ -19,6 +21,12 @@ const elements = {
   emptyAddButton: document.querySelector('#empty-add-button'),
   saveState: document.querySelector('#save-state'),
   previewLink: document.querySelector('#preview-link'),
+  moveDialog: document.querySelector('#move-dialog'),
+  moveForm: document.querySelector('#move-form'),
+  moveDescription: document.querySelector('#move-description'),
+  moveDirectory: document.querySelector('#move-directory-select'),
+  cancelMoveButton: document.querySelector('#cancel-move-button'),
+  confirmMoveButton: document.querySelector('#confirm-move-button'),
   toast: document.querySelector('#toast'),
 };
 
@@ -28,6 +36,11 @@ const state = {
   selectedDirectoryId: null,
   selectedId: null,
   creating: false,
+  directorySortMode: false,
+  snippetSortMode: false,
+  draggingType: null,
+  moveSnippetId: null,
+  sortSaving: false,
   toastTimer: null,
 };
 
@@ -86,6 +99,42 @@ function directoryActionButton(label, title, onClick, disabled = false) {
   return button;
 }
 
+function createDragHandle(title) {
+  const handle = document.createElement('span');
+  handle.className = 'drag-handle';
+  handle.textContent = '⠿';
+  handle.title = title;
+  handle.setAttribute('aria-hidden', 'true');
+  return handle;
+}
+
+function updateSortControls() {
+  elements.directorySortButton.textContent = state.directorySortMode ? '✓ 完成' : '⇅ 排序';
+  elements.directorySortButton.classList.toggle('active', state.directorySortMode);
+  elements.directorySortButton.disabled = state.sortSaving || state.directories.length < 2;
+  elements.snippetSortButton.textContent = state.snippetSortMode ? '✓ 完成' : '⇅ 排序';
+  elements.snippetSortButton.classList.toggle('active', state.snippetSortMode);
+  elements.snippetSortButton.disabled = state.sortSaving || currentSnippets().length < 2;
+  elements.addDirectoryButton.disabled = state.directorySortMode || state.sortSaving;
+  elements.addButton.disabled = !currentDirectory() || state.snippetSortMode || state.sortSaving;
+}
+
+function makeSortable(row, type, id, enabled) {
+  row.draggable = enabled;
+  row.classList.toggle('sortable-row', enabled);
+  if (!enabled) return;
+  row.addEventListener('dragstart', (event) => {
+    state.draggingType = type;
+    row.classList.add('dragging');
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', id);
+  });
+  row.addEventListener('dragend', () => {
+    row.classList.remove('dragging');
+    state.draggingType = null;
+  });
+}
+
 function renderDirectories() {
   elements.directoryList.replaceChildren();
   if (!state.directories.length) {
@@ -93,13 +142,16 @@ function renderDirectories() {
     empty.className = 'admin-list-empty directory-empty';
     empty.textContent = '暂无目录';
     elements.directoryList.append(empty);
+    updateSortControls();
     return;
   }
 
-  state.directories.forEach((directory, index) => {
+  state.directories.forEach((directory) => {
     const row = document.createElement('div');
     row.className = 'directory-admin-row';
+    row.dataset.directoryId = directory.id;
     if (directory.id === state.selectedDirectoryId) row.classList.add('active');
+    makeSortable(row, 'directory', directory.id, state.directorySortMode);
 
     const select = document.createElement('button');
     select.type = 'button';
@@ -114,19 +166,24 @@ function renderDirectories() {
     count.textContent = `${state.snippets.filter((item) => item.directoryId === directory.id).length} 段代码`;
     copy.append(name, count);
     select.append(icon, copy);
-    select.addEventListener('click', () => selectDirectory(directory.id));
+    select.addEventListener('click', () => {
+      if (!state.directorySortMode) selectDirectory(directory.id);
+    });
 
     const actions = document.createElement('span');
     actions.className = 'directory-actions';
-    actions.append(
-      directoryActionButton('↑', '上移目录', () => moveDirectory(index, -1), index === 0),
-      directoryActionButton('↓', '下移目录', () => moveDirectory(index, 1), index === state.directories.length - 1),
-      directoryActionButton('✎', '重命名目录', () => renameDirectory(directory)),
-      directoryActionButton('×', '删除目录', () => deleteDirectory(directory)),
-    );
+    if (state.directorySortMode) {
+      actions.append(createDragHandle('拖动目录调整顺序'));
+    } else {
+      actions.append(
+        directoryActionButton('✎', '重命名目录', () => renameDirectory(directory)),
+        directoryActionButton('×', '删除目录', () => deleteDirectory(directory)),
+      );
+    }
     row.append(select, actions);
     elements.directoryList.append(row);
   });
+  updateSortControls();
 }
 
 function renderList() {
@@ -134,7 +191,7 @@ function renderList() {
   elements.list.replaceChildren();
   const directory = currentDirectory();
   elements.codeListTitle.textContent = directory ? directory.name : '代码库';
-  elements.addButton.disabled = !directory;
+  updateSortControls();
 
   if (!directory || !snippets.length) {
     const empty = document.createElement('p');
@@ -147,7 +204,9 @@ function renderList() {
   snippets.forEach((snippet, index) => {
     const row = document.createElement('div');
     row.className = 'admin-list-row';
+    row.dataset.snippetId = snippet.id;
     if (snippet.id === state.selectedId) row.classList.add('active');
+    makeSortable(row, 'snippet', snippet.id, state.snippetSortMode);
 
     const select = document.createElement('button');
     select.type = 'button';
@@ -162,17 +221,24 @@ function renderList() {
     meta.textContent = `${snippet.language || '无标签'} · ${lineCount(snippet.code)} 行`;
     copy.append(title, meta);
     select.append(number, copy);
-    select.addEventListener('click', () => selectSnippet(snippet.id));
+    select.addEventListener('click', () => {
+      if (!state.snippetSortMode) selectSnippet(snippet.id);
+    });
 
-    const order = document.createElement('span');
-    order.className = 'order-buttons';
-    order.append(
-      directoryActionButton('↑', '上移', () => moveSnippet(index, -1), index === 0),
-      directoryActionButton('↓', '下移', () => moveSnippet(index, 1), index === snippets.length - 1),
-    );
-    row.append(select, order);
+    const actions = document.createElement('span');
+    actions.className = 'code-item-actions';
+    if (state.snippetSortMode) {
+      actions.append(createDragHandle('拖动代码调整顺序'));
+    } else {
+      const moveButton = directoryActionButton('移动', '移动到其他目录', () => openMoveDialog(snippet));
+      moveButton.className = 'move-code-button';
+      moveButton.disabled = state.directories.length < 2;
+      actions.append(moveButton);
+    }
+    row.append(select, actions);
     elements.list.append(row);
   });
+  updateSortControls();
 }
 
 function setEditorVisible(visible) {
@@ -200,6 +266,7 @@ function showEmptyEditor() {
 
 function selectDirectory(id, { selectFirst = true } = {}) {
   if (!state.directories.some((directory) => directory.id === id)) return;
+  state.snippetSortMode = false;
   state.selectedDirectoryId = id;
   state.creating = false;
   state.selectedId = null;
@@ -308,54 +375,153 @@ async function deleteDirectory(directory) {
   }
 }
 
-async function moveDirectory(index, direction) {
-  const target = index + direction;
-  if (target < 0 || target >= state.directories.length) return;
-  const previous = [...state.directories];
-  [state.directories[index], state.directories[target]] = [
-    state.directories[target],
-    state.directories[index],
-  ];
+function toggleDirectorySort() {
+  if (state.directories.length < 2 || state.sortSaving) return;
+  state.directorySortMode = !state.directorySortMode;
+  if (state.directorySortMode) state.snippetSortMode = false;
   renderDirectories();
+  renderList();
+}
+
+function toggleSnippetSort() {
+  if (currentSnippets().length < 2 || state.sortSaving) return;
+  state.snippetSortMode = !state.snippetSortMode;
+  if (state.snippetSortMode) state.directorySortMode = false;
+  renderDirectories();
+  renderList();
+}
+
+function dragAfterElement(container, pointerY, selector) {
+  return [...container.querySelectorAll(`${selector}:not(.dragging)`)].reduce(
+    (closest, element) => {
+      const box = element.getBoundingClientRect();
+      const offset = pointerY - box.top - (box.height / 2);
+      return offset < 0 && offset > closest.offset ? { offset, element } : closest;
+    },
+    { offset: Number.NEGATIVE_INFINITY, element: null },
+  ).element;
+}
+
+function handleSortDragOver(event, type, container, selector) {
+  if (state.draggingType !== type || state.sortSaving) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  const dragging = container.querySelector('.dragging');
+  if (!dragging) return;
+  const after = dragAfterElement(container, event.clientY, selector);
+  container.insertBefore(dragging, after);
+}
+
+async function persistDirectoryOrder() {
+  if (state.sortSaving) return;
+  const ids = [...elements.directoryList.querySelectorAll('[data-directory-id]')]
+    .map((row) => row.dataset.directoryId);
+  const currentIds = state.directories.map((directory) => directory.id);
+  if (ids.join('|') === currentIds.join('|')) return;
+  const previous = [...state.directories];
+  state.sortSaving = true;
+  updateSortControls();
   try {
     const data = await api('/api/directories/order', {
       method: 'PUT',
-      body: JSON.stringify({ ids: state.directories.map((item) => item.id) }),
+      body: JSON.stringify({ ids }),
     });
     state.directories = data.directories;
-    renderDirectories();
-    showToast('目录顺序已更新');
+    showToast('目录顺序已保存，手机端会同步显示');
   } catch (error) {
     state.directories = previous;
-    renderDirectories();
     showToast(error.message, 'error');
+  } finally {
+    state.sortSaving = false;
+    renderDirectories();
+    renderList();
   }
 }
 
-async function moveSnippet(index, direction) {
-  const snippets = currentSnippets();
-  const target = index + direction;
-  if (target < 0 || target >= snippets.length) return;
+async function persistSnippetOrder() {
+  if (state.sortSaving || !state.selectedDirectoryId) return;
+  const directoryId = state.selectedDirectoryId;
+  const ids = [...elements.list.querySelectorAll('[data-snippet-id]')]
+    .map((row) => row.dataset.snippetId);
+  const currentIds = currentSnippets().map((snippet) => snippet.id);
+  if (ids.join('|') === currentIds.join('|')) return;
   const previous = [...state.snippets];
-  [snippets[index], snippets[target]] = [snippets[target], snippets[index]];
-  let groupIndex = 0;
-  state.snippets = state.snippets.map((snippet) => (
-    snippet.directoryId === state.selectedDirectoryId ? snippets[groupIndex++] : snippet
-  ));
-  renderList();
+  state.sortSaving = true;
+  updateSortControls();
   try {
-    await api('/api/snippets/order', {
+    const data = await api('/api/snippets/order', {
       method: 'PUT',
-      body: JSON.stringify({
-        directoryId: state.selectedDirectoryId,
-        ids: snippets.map((item) => item.id),
-      }),
+      body: JSON.stringify({ directoryId, ids }),
     });
-    showToast('代码顺序已更新');
+    let orderedIndex = 0;
+    state.snippets = state.snippets.map((snippet) => (
+      snippet.directoryId === directoryId ? data.snippets[orderedIndex++] : snippet
+    ));
+    showToast('代码顺序已保存，手机端会同步显示');
   } catch (error) {
     state.snippets = previous;
-    renderList();
     showToast(error.message, 'error');
+  } finally {
+    state.sortSaving = false;
+    renderList();
+  }
+}
+
+function openMoveDialog(snippet) {
+  const targets = state.directories.filter((directory) => directory.id !== snippet.directoryId);
+  if (!targets.length) {
+    showToast('请先创建另一个目录', 'error');
+    return;
+  }
+  state.moveSnippetId = snippet.id;
+  elements.moveDescription.textContent = `将“${snippet.title}”移动到：`;
+  elements.moveDirectory.replaceChildren();
+  targets.forEach((directory) => {
+    const option = document.createElement('option');
+    option.value = directory.id;
+    option.textContent = directory.name;
+    elements.moveDirectory.append(option);
+  });
+  elements.moveDialog.showModal();
+  elements.moveDirectory.focus();
+}
+
+function closeMoveDialog() {
+  state.moveSnippetId = null;
+  if (elements.moveDialog.open) elements.moveDialog.close();
+}
+
+async function submitSnippetMove(event) {
+  event.preventDefault();
+  const snippet = state.snippets.find((item) => item.id === state.moveSnippetId);
+  const target = state.directories.find((directory) => directory.id === elements.moveDirectory.value);
+  if (!snippet || !target) return;
+  const sourceIndex = currentSnippets().findIndex((item) => item.id === snippet.id);
+  elements.confirmMoveButton.disabled = true;
+  try {
+    const data = await api(`/api/snippets/${encodeURIComponent(snippet.id)}/move`, {
+      method: 'PATCH',
+      body: JSON.stringify({ directoryId: target.id }),
+    });
+    state.snippets = data.snippets;
+    closeMoveDialog();
+    renderDirectories();
+    if (state.selectedId === snippet.id) {
+      state.selectedId = null;
+      const remaining = currentSnippets();
+      if (remaining.length) selectSnippet(remaining[Math.min(sourceIndex, remaining.length - 1)].id);
+      else {
+        renderList();
+        showEmptyEditor();
+      }
+    } else {
+      renderList();
+    }
+    showToast(`已移动到“${target.name}”，并排在目录末尾`);
+  } catch (error) {
+    showToast(error.message, 'error');
+  } finally {
+    elements.confirmMoveButton.disabled = false;
   }
 }
 
@@ -385,11 +551,16 @@ elements.form.addEventListener('submit', async (event) => {
     code: elements.code.value,
   };
   const isNew = state.creating;
+  const previousDirectoryId = state.snippets.find((item) => item.id === state.selectedId)?.directoryId;
   const url = isNew ? '/api/snippets' : `/api/snippets/${encodeURIComponent(state.selectedId)}`;
   elements.saveState.textContent = '正在保存…';
   try {
     const data = await api(url, { method: isNew ? 'POST' : 'PUT', body: JSON.stringify(payload) });
     if (isNew) state.snippets.push(data.snippet);
+    else if (previousDirectoryId !== data.snippet.directoryId) {
+      state.snippets = state.snippets.filter((item) => item.id !== data.snippet.id);
+      state.snippets.push(data.snippet);
+    }
     else {
       const index = state.snippets.findIndex((item) => item.id === state.selectedId);
       state.snippets[index] = data.snippet;
@@ -425,7 +596,30 @@ elements.deleteButton.addEventListener('click', async () => {
 });
 
 elements.addDirectoryButton.addEventListener('click', addDirectory);
+elements.directorySortButton.addEventListener('click', toggleDirectorySort);
 elements.addButton.addEventListener('click', newSnippet);
+elements.snippetSortButton.addEventListener('click', toggleSnippetSort);
+elements.directoryList.addEventListener('dragover', (event) => {
+  handleSortDragOver(event, 'directory', elements.directoryList, '.directory-admin-row');
+});
+elements.directoryList.addEventListener('drop', (event) => {
+  if (state.draggingType !== 'directory') return;
+  event.preventDefault();
+  persistDirectoryOrder();
+});
+elements.list.addEventListener('dragover', (event) => {
+  handleSortDragOver(event, 'snippet', elements.list, '.admin-list-row');
+});
+elements.list.addEventListener('drop', (event) => {
+  if (state.draggingType !== 'snippet') return;
+  event.preventDefault();
+  persistSnippetOrder();
+});
+elements.moveForm.addEventListener('submit', submitSnippetMove);
+elements.cancelMoveButton.addEventListener('click', closeMoveDialog);
+elements.moveDialog.addEventListener('cancel', () => {
+  state.moveSnippetId = null;
+});
 elements.emptyAddButton.addEventListener('click', () => {
   if (!state.directories.length) addDirectory();
   else if (currentDirectory()) newSnippet();

@@ -131,23 +131,53 @@ test('directory order and per-directory snippet order endpoints work', async (t)
     snippetOrder.data.snippets.map((item) => item.id),
     [secondSnippet.id, firstSnippet.id],
   );
+
+  await jsonRequest(`${baseUrl}/api/snippets/${firstSnippet.id}/reviewed`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reviewed: true }),
+  });
+  const moved = await jsonRequest(`${baseUrl}/api/snippets/${firstSnippet.id}/move`, {
+    method: 'PATCH',
+    body: JSON.stringify({ directoryId: secondDirectory.id }),
+  });
+  assert.equal(moved.response.status, 200);
+  assert.equal(moved.data.snippet.directoryId, secondDirectory.id);
+  assert.equal(moved.data.snippet.reviewed, true);
+  assert.deepEqual(
+    moved.data.snippets.filter((item) => item.directoryId === firstDirectory.id).map((item) => item.id),
+    [secondSnippet.id],
+  );
+  assert.deepEqual(
+    moved.data.snippets.filter((item) => item.directoryId === secondDirectory.id).map((item) => item.id),
+    [firstSnippet.id],
+  );
 });
 
 test('serves viewer and management pages without a mobile admin entry', async (t) => {
   const baseUrl = await testServer(t);
   const viewerResponse = await fetch(baseUrl);
   const adminResponse = await fetch(`${baseUrl}/admin`);
+  const adminScriptResponse = await fetch(`${baseUrl}/admin.js?v=admin-drag-sort-1`);
   const viewerScriptResponse = await fetch(`${baseUrl}/viewer.js?v=server-reviewed-state-1`);
   const viewerStylesResponse = await fetch(`${baseUrl}/styles.css?v=server-reviewed-state-1`);
   const viewer = await viewerResponse.text();
   const admin = await adminResponse.text();
+  const adminScript = await adminScriptResponse.text();
   const viewerScript = await viewerScriptResponse.text();
   const viewerStyles = await viewerStylesResponse.text();
   assert.match(viewer, /CodePreview/);
   assert.doesNotMatch(viewer, /在电脑端管理/);
   assert.match(admin, /目录/);
   assert.match(admin, /代码管理/);
-  assert.match(admin, /admin\.js\?v=directory-cache-fix-1/);
+  assert.match(admin, /admin\.js\?v=admin-drag-sort-1/);
+  assert.match(admin, /id="directory-sort-button"/);
+  assert.match(admin, /id="snippet-sort-button"/);
+  assert.match(admin, /id="move-dialog"/);
+  assert.doesNotMatch(admin, /使用箭头调整显示顺序/);
+  assert.match(adminScript, /row\.draggable = enabled/);
+  assert.match(adminScript, /\/api\/snippets\/\$\{encodeURIComponent\(snippet\.id\)\}\/move/);
+  assert.doesNotMatch(adminScript, /function moveDirectory\(/);
+  assert.doesNotMatch(adminScript, /function moveSnippet\(/);
   assert.match(viewer, /viewer\.js\?v=server-reviewed-state-1/);
   assert.doesNotMatch(viewer, /id="fullscreen-button"/);
   assert.doesNotMatch(viewer, /id="play-label"/);
@@ -198,7 +228,7 @@ test('rejects an invalid reviewed value and migrates old snippets to unreviewed'
 
 test('prevents stale scripts and API data from being cached', async (t) => {
   const baseUrl = await testServer(t);
-  const scriptResponse = await fetch(`${baseUrl}/admin.js?v=directory-cache-fix-1`);
+  const scriptResponse = await fetch(`${baseUrl}/admin.js?v=admin-drag-sort-1`);
   const apiResponse = await fetch(`${baseUrl}/api/library`);
   assert.equal(scriptResponse.status, 200);
   assert.match(scriptResponse.headers.get('cache-control'), /no-cache/);
