@@ -158,8 +158,8 @@ test('serves viewer and management pages without a mobile admin entry', async (t
   const viewerResponse = await fetch(baseUrl);
   const adminResponse = await fetch(`${baseUrl}/admin`);
   const adminScriptResponse = await fetch(`${baseUrl}/admin.js?v=admin-drag-sort-1`);
-  const viewerScriptResponse = await fetch(`${baseUrl}/viewer.js?v=server-reviewed-state-1`);
-  const viewerStylesResponse = await fetch(`${baseUrl}/styles.css?v=server-reviewed-state-1`);
+  const viewerScriptResponse = await fetch(`${baseUrl}/viewer.js?v=incremental-line-reveal-1`);
+  const viewerStylesResponse = await fetch(`${baseUrl}/styles.css?v=incremental-line-reveal-1`);
   const viewer = await viewerResponse.text();
   const admin = await adminResponse.text();
   const adminScript = await adminScriptResponse.text();
@@ -178,7 +178,7 @@ test('serves viewer and management pages without a mobile admin entry', async (t
   assert.match(adminScript, /\/api\/snippets\/\$\{encodeURIComponent\(snippet\.id\)\}\/move/);
   assert.doesNotMatch(adminScript, /function moveDirectory\(/);
   assert.doesNotMatch(adminScript, /function moveSnippet\(/);
-  assert.match(viewer, /viewer\.js\?v=server-reviewed-state-1/);
+  assert.match(viewer, /viewer\.js\?v=incremental-line-reveal-1/);
   assert.doesNotMatch(viewer, /id="fullscreen-button"/);
   assert.doesNotMatch(viewer, /id="play-label"/);
   assert.ok(
@@ -192,6 +192,11 @@ test('serves viewer and management pages without a mobile admin entry', async (t
   assert.match(viewerScript, /aria-pressed/);
   assert.match(viewerStyles, /\.review-toggle\.reviewed/);
   assert.match(viewerStyles, /width: 28px/);
+  assert.match(viewerScript, /function createCodeLine\(line, reveal\)/);
+  assert.match(viewerScript, /item\.classList\.add\('revealing-line'\)/);
+  assert.match(viewerScript, /for \(let index = elements\.lines\.children\.length; index < targetCount/);
+  assert.doesNotMatch(viewerStyles, /\.code-lines li \{[^}]*animation:/s);
+  assert.match(viewerStyles, /\.code-lines li\.revealing-line \{[^}]*animation: reveal-line/s);
   assert.match(adminResponse.headers.get('cache-control'), /no-store/);
 });
 

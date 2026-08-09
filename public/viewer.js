@@ -216,20 +216,38 @@ async function toggleSnippetReviewed(id, button) {
   }
 }
 
-function renderCode({ scroll = true } = {}) {
-  const lines = codeLines();
-  elements.lines.replaceChildren();
-  const fragment = document.createDocumentFragment();
+function createCodeLine(line, reveal) {
+  const item = document.createElement('li');
+  const code = document.createElement('code');
+  code.textContent = line || ' ';
+  item.append(code);
 
-  lines.slice(0, state.visibleLines).forEach((line, index) => {
-    const item = document.createElement('li');
-    if (index === state.visibleLines - 1) item.className = 'current-line';
-    const code = document.createElement('code');
-    code.textContent = line || ' ';
-    item.append(code);
-    fragment.append(item);
-  });
+  if (reveal) {
+    item.classList.add('revealing-line');
+    item.addEventListener('animationend', () => {
+      item.classList.remove('revealing-line');
+    }, { once: true });
+  }
+  return item;
+}
+
+function renderCode({ scroll = true, revealNew = false } = {}) {
+  const lines = codeLines();
+  const targetCount = Math.min(state.visibleLines, lines.length);
+
+  while (elements.lines.children.length > targetCount) {
+    elements.lines.lastElementChild.remove();
+  }
+
+  const fragment = document.createDocumentFragment();
+  for (let index = elements.lines.children.length; index < targetCount; index += 1) {
+    fragment.append(createCodeLine(lines[index], revealNew));
+  }
   elements.lines.append(fragment);
+
+  [...elements.lines.children].forEach((item, index) => {
+    item.classList.toggle('current-line', index === targetCount - 1);
+  });
 
   const total = lines.length;
   elements.counter.textContent = `${state.visibleLines} / ${total}`;
@@ -258,11 +276,15 @@ function stopPlayback() {
   elements.play.setAttribute('aria-label', '自动播放');
 }
 
-function setVisibleLines(value, options) {
+function setVisibleLines(value, options = {}) {
   const total = codeLines().length;
+  const previousVisibleLines = state.visibleLines;
   state.visibleLines = Math.min(Math.max(value, Math.min(1, total)), total);
   saveProgress();
-  renderCode(options);
+  renderCode({
+    ...options,
+    revealNew: options.revealNew ?? state.visibleLines > previousVisibleLines,
+  });
 }
 
 function nextLine() {
@@ -310,6 +332,7 @@ function selectSnippet(id, { closeDrawer = true } = {}) {
   elements.language.classList.toggle('is-hidden', !snippet.language);
   elements.empty.classList.toggle('is-hidden', total > 0);
   elements.scroll.scrollTop = 0;
+  elements.lines.replaceChildren();
   renderCode({ scroll: false });
   renderLibrary();
   const url = new URL(window.location.href);
