@@ -13,6 +13,7 @@ const elements = {
   play: document.querySelector('#play-button'),
   playIcon: document.querySelector('#play-icon'),
   reset: document.querySelector('#reset-button'),
+  showAll: document.querySelector('#show-all-button'),
   speed: document.querySelector('#speed-select'),
   libraryButton: document.querySelector('#library-button'),
   closeLibraryButton: document.querySelector('#close-library-button'),
@@ -259,6 +260,7 @@ function renderCode({ scroll = true, revealNew = false } = {}) {
   elements.next.disabled = !hasLines || state.visibleLines >= total;
   elements.play.disabled = !hasLines;
   elements.reset.disabled = !hasLines || state.visibleLines <= 1;
+  elements.showAll.disabled = !hasLines || state.visibleLines >= total;
 
   if (scroll) {
     requestAnimationFrame(() => {
@@ -301,6 +303,14 @@ function nextLine() {
 function previousLine() {
   stopPlayback();
   if (state.visibleLines > 1) setVisibleLines(state.visibleLines - 1);
+}
+
+function showAllLines() {
+  const total = codeLines().length;
+  if (!total || state.visibleLines >= total) return;
+  stopPlayback();
+  setVisibleLines(total, { scroll: false, revealNew: false });
+  showToast('已显示全部代码');
 }
 
 function togglePlayback() {
@@ -377,6 +387,7 @@ elements.backdrop.addEventListener('click', () => setDrawer(false));
 elements.previous.addEventListener('click', previousLine);
 elements.next.addEventListener('click', nextLine);
 elements.play.addEventListener('click', togglePlayback);
+elements.showAll.addEventListener('click', showAllLines);
 elements.reset.addEventListener('click', () => {
   stopPlayback();
   setVisibleLines(1, { scroll: false });

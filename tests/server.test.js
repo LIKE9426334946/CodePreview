@@ -158,7 +158,7 @@ test('serves viewer and management pages without a mobile admin entry', async (t
   const viewerResponse = await fetch(baseUrl);
   const adminResponse = await fetch(`${baseUrl}/admin`);
   const adminScriptResponse = await fetch(`${baseUrl}/admin.js?v=admin-drag-sort-1`);
-  const viewerScriptResponse = await fetch(`${baseUrl}/viewer.js?v=incremental-line-reveal-1`);
+  const viewerScriptResponse = await fetch(`${baseUrl}/viewer.js?v=show-all-code-1`);
   const viewerStylesResponse = await fetch(`${baseUrl}/styles.css?v=incremental-line-reveal-1`);
   const viewer = await viewerResponse.text();
   const admin = await adminResponse.text();
@@ -178,7 +178,7 @@ test('serves viewer and management pages without a mobile admin entry', async (t
   assert.match(adminScript, /\/api\/snippets\/\$\{encodeURIComponent\(snippet\.id\)\}\/move/);
   assert.doesNotMatch(adminScript, /function moveDirectory\(/);
   assert.doesNotMatch(adminScript, /function moveSnippet\(/);
-  assert.match(viewer, /viewer\.js\?v=incremental-line-reveal-1/);
+  assert.match(viewer, /viewer\.js\?v=show-all-code-1/);
   assert.doesNotMatch(viewer, /id="fullscreen-button"/);
   assert.doesNotMatch(viewer, /id="play-label"/);
   assert.ok(
@@ -186,6 +186,7 @@ test('serves viewer and management pages without a mobile admin entry', async (t
     '播放控制栏应位于代码区域上方',
   );
   assert.match(viewer, /id="play-button"[^>]*aria-label="自动播放"[^>]*>/);
+  assert.match(viewer, /id="show-all-button"[^>]*aria-label="显示全部代码"[^>]*>/);
   assert.match(viewer, /<option value="1800" selected>1×<\/option>/);
   assert.match(viewerScript, /className = 'review-toggle'/);
   assert.match(viewerScript, /method: 'PATCH'/);
@@ -195,6 +196,9 @@ test('serves viewer and management pages without a mobile admin entry', async (t
   assert.match(viewerScript, /function createCodeLine\(line, reveal\)/);
   assert.match(viewerScript, /item\.classList\.add\('revealing-line'\)/);
   assert.match(viewerScript, /for \(let index = elements\.lines\.children\.length; index < targetCount/);
+  assert.match(viewerScript, /function showAllLines\(\)/);
+  assert.match(viewerScript, /setVisibleLines\(total, \{ scroll: false, revealNew: false \}\)/);
+  assert.match(viewerScript, /elements\.showAll\.disabled = !hasLines \|\| state\.visibleLines >= total/);
   assert.doesNotMatch(viewerStyles, /\.code-lines li \{[^}]*animation:/s);
   assert.match(viewerStyles, /\.code-lines li\.revealing-line \{[^}]*animation: reveal-line/s);
   assert.match(adminResponse.headers.get('cache-control'), /no-store/);

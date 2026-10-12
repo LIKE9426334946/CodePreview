@@ -12,11 +12,11 @@ async function temporaryStore(t) {
   return { store: createJsonStore(file), file };
 }
 
-test('creates a version 2 JSON file with empty directories and snippets', async (t) => {
+test('creates a version 3 JSON file with empty directories and snippets', async (t) => {
   const { store, file } = await temporaryStore(t);
-  assert.deepEqual(await store.getLibrary(), { version: 2, directories: [], snippets: [] });
+  assert.deepEqual(await store.getLibrary(), { version: 3, directories: [], snippets: [] });
   const data = JSON.parse(await fs.readFile(file, 'utf8'));
-  assert.equal(data.version, 2);
+  assert.equal(data.version, 3);
   assert.deepEqual(data.directories, []);
   assert.deepEqual(data.snippets, []);
 });
@@ -29,7 +29,7 @@ test('migrates existing version 1 snippets into an uncategorized directory', asy
     snippets: [{ id: 'old-code', title: '旧代码', code: 'print(1)' }],
   }));
   const library = await store.getLibrary();
-  assert.equal(library.version, 2);
+  assert.equal(library.version, 3);
   assert.equal(library.directories[0].name, '未分类');
   assert.equal(library.snippets[0].directoryId, library.directories[0].id);
 });
